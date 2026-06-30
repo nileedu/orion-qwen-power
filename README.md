@@ -2,7 +2,7 @@
 
 Orion Qwen Power is a local Qwen-first AI gateway for Windows and Linux.
 
-It exposes one local OpenAI-compatible and Anthropic-compatible endpoint:
+It exposes one local OpenAI-compatible endpoint and a practical Anthropic request adapter:
 
 ```text
 http://localhost:3800
@@ -21,7 +21,7 @@ Author: nileedu
 - Qwen web session bridge through `qwenproxy`.
 - A local hub on port `3800`.
 - OpenAI-compatible `/v1/chat/completions`.
-- Anthropic-compatible `/v1/messages` for Claude Code style clients.
+- Anthropic request adapter at `/v1/messages` for Claude Code style clients.
 - `/v1/models` with dynamic Qwen model discovery.
 - Fallback between Qwen models when one fails.
 - Metrics at `/metrics`.
@@ -43,7 +43,7 @@ Claude Code / Continue / OpenCode / curl / SDK
             chat.qwen.ai
 ```
 
-The hub accepts either `Authorization: Bearer orion-proxy-key` or `x-api-key: orion-proxy-key`.
+The hub binds to `127.0.0.1` by default and accepts either `Authorization: Bearer orion-proxy-key` or `x-api-key: orion-proxy-key`.
 
 ## Models
 
@@ -186,7 +186,7 @@ Config:
 }
 ```
 
-Important: do not set `ANTHROPIC_AUTH_TOKEN`. If it exists in shell profiles, `.claude.json`, `.claude/settings.json`, or environment variables, remove it. It bypasses the intended API-key flow and can break proxy routing.
+Important: do not delete your Claude Code OAuth login files. But in the shell, workspace, launcher, or settings file where you want to use Orion Qwen Power, do not leave `ANTHROPIC_AUTH_TOKEN` active. Use `ANTHROPIC_BASE_URL` plus `ANTHROPIC_API_KEY`. If `ANTHROPIC_AUTH_TOKEN` is present in that same environment, Claude Code can ignore the proxy/API-key path or route through the real OAuth flow instead.
 
 If you are already logged into Claude Code with OAuth, do not delete the OAuth files. Only set the API environment for the workspace or shell where you want to use Orion Qwen.
 
@@ -215,7 +215,9 @@ curl http://localhost:3800/v1/chat/completions \
   -d '{"model":"qwen/3.7-max","messages":[{"role":"user","content":"responda: CONECTADO"}]}'
 ```
 
-## Anthropic API Compatibility
+## Anthropic Request Adapter
+
+This is a practical adapter for Claude Code style requests. It supports the basic `/v1/messages` shape, but token counting is approximate, tool conversion is best-effort, and streaming is adapted after the upstream response rather than true upstream streaming.
 
 ```bash
 curl http://localhost:3800/v1/messages \
@@ -251,7 +253,7 @@ If `/v1/models` works but chat fails:
 
 If Claude Code ignores the proxy:
 
-- Remove `ANTHROPIC_AUTH_TOKEN`.
+- Remove or unset `ANTHROPIC_AUTH_TOKEN` from the environment/profile being used for Orion Qwen.
 - Keep only `ANTHROPIC_API_KEY`.
 - Restart the terminal or reload VS Code.
 

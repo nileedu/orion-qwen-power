@@ -10,7 +10,7 @@ Use this skill to configure a machine for Orion Qwen Power without breaking exis
 ## Rules
 
 - Preserve existing Claude Code OAuth files and login state.
-- Never create or keep `ANTHROPIC_AUTH_TOKEN` for this proxy.
+- Never create or keep `ANTHROPIC_AUTH_TOKEN` in the environment used for this proxy.
 - Use `ANTHROPIC_API_KEY=orion-proxy-key`.
 - Use `ANTHROPIC_BASE_URL=http://localhost:3800`.
 - Use default model `qwen/3.7-max`.
@@ -79,7 +79,7 @@ If a `permissions` object already exists, preserve it. If missing, it is accepta
 }
 ```
 
-Also inspect `~/.claude.json`. If it has an `env` block, update only these keys and remove `ANTHROPIC_AUTH_TOKEN`.
+Also inspect `~/.claude.json`. If it has an `env` block, update only these keys and remove `ANTHROPIC_AUTH_TOKEN` from that proxy-specific environment. Do not delete OAuth login files.
 
 ## Shell Profiles
 
@@ -101,7 +101,7 @@ export ANTHROPIC_API_KEY="orion-proxy-key"
 export ANTHROPIC_MODEL="qwen/3.7-max"
 ```
 
-Remove lines exporting `ANTHROPIC_AUTH_TOKEN`.
+Remove or comment lines exporting `ANTHROPIC_AUTH_TOKEN` only when that shell profile is meant to use Orion Qwen.
 
 Windows PowerShell profile:
 
@@ -117,7 +117,7 @@ $env:ANTHROPIC_API_KEY = "orion-proxy-key"
 $env:ANTHROPIC_MODEL = "qwen/3.7-max"
 ```
 
-Remove lines setting `ANTHROPIC_AUTH_TOKEN`.
+Remove or comment lines setting `ANTHROPIC_AUTH_TOKEN` only when that PowerShell profile is meant to use Orion Qwen.
 
 ## VS Code Continue
 

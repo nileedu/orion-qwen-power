@@ -18,12 +18,24 @@ import { sessionStore } from './session.js';
 dotenv.config();
 
 const app = new Hono();
-app.use('*', cors());
 
 const HUB_API_KEY = process.env.HUB_API_KEY || 'orion-proxy-key';
 const PORT = parseInt(process.env.PORT || '3800');
+const HOST = process.env.HOST || '127.0.0.1';
+const CORS_ORIGINS = (process.env.CORS_ORIGINS || 'http://localhost,http://127.0.0.1,vscode-webview://')
+  .split(',')
+  .map((x) => x.trim())
+  .filter(Boolean);
 const MODEL_CACHE_TTL_MS = parseInt(process.env.MODEL_CACHE_TTL_MS || '60000');
 const MAX_PAYLOAD_BYTES = parseInt(process.env.MAX_PAYLOAD_BYTES || String(10 * 1024 * 1024));
+
+app.use('*', cors({
+  origin: (origin) => {
+    if (!origin) return null;
+    if (CORS_ORIGINS.some((allowed) => origin === allowed || origin.startsWith(allowed))) return origin;
+    return null;
+  },
+}));
 
 const BACKENDS: Record<'qwen', { url: string; key: string }> = {
   qwen: { url: process.env.QWENPROXY_URL || 'http://localhost:3802', key: process.env.QWENPROXY_KEY || 'orion-proxy-key' },
@@ -223,6 +235,15 @@ app.get('/v1/models', async (c) => {
 app.get('/v1/health/models', (c) => c.json(getHealthSnapshot()));
 
 app.get('/metrics', (c) => {
+  const auth = c.req.header('Authorization') || '';
+  const token = auth.replace(/^Bearer\s+/i, '').trim();
+  const remote = c.req.header('x-forwarded-for') || c.req.header('x-real-ip') || '';
+  if (token && token !== HUB_API_KEY) {
+    return c.text('unauthorized\n', 401);
+  }
+  if (!token && remote && !remote.startsWith('127.') && remote !== '::1') {
+    return c.text('metrics are local-only unless Authorization is provided\n', 403);
+  }
   const lines: string[] = [];
   const uptime = Math.floor((Date.now() - metricsState.startedAt) / 1000);
   lines.push('# HELP orion_hub_uptime_seconds Hub uptime in seconds');
@@ -548,6 +569,14 @@ app.post('/v1/chat/completions/stop', async (c) => {
 app.post('/v1/upload', async (c) => {
   const backend = BACKENDS.qwen;
   const uploadBody = await c.req.arrayBuffer();
+  if (uploadBody.byteLength > MAX_PAYLOAD_BYTES) {
+    return c.json({
+      error: {
+        message: `upload too large: ${uploadBody.byteLength} bytes exceeds ${MAX_PAYLOAD_BYTES}`,
+        type: 'payload_too_large',
+      },
+    }, 413);
+  }
   const upstream = await fetch(`${backend.url}/v1/upload`, {
     method: 'POST',
     headers: {
@@ -578,4 +607,4 @@ app.delete('/v1/sessions/:id', (c) => {
 console.log(`Orion Proxy Hub — listening on :${PORT}`);
 console.log(`  Curated working models: ${CURATED_MODELS.length}`);
 console.log(`  Backends: ${Object.keys(BACKENDS).join(', ')}`);
-serve({ fetch: app.fetch, port: PORT });
+serve({ fetch: app.fetch, port: PORT, hostname: HOST });
