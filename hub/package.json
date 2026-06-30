@@ -1,0 +1,20 @@
+{
+  "name": "orion-qwen-power-hub",
+  "version": "1.0.0",
+  "description": "Qwen-first local AI gateway with OpenAI and Anthropic-compatible endpoints",
+  "type": "module",
+  "scripts": {
+    "start": "npx tsx src/server.ts",
+    "dev": "npx tsx --watch src/server.ts"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.0.2",
+    "dotenv": "^17.4.2",
+    "hono": "^4.12.18"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.5.3"
+  }
+}
