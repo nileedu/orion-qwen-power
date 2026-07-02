@@ -41,6 +41,58 @@ const BACKENDS: Record<'qwen', { url: string; key: string }> = {
   qwen: { url: process.env.QWENPROXY_URL || 'http://localhost:3802', key: process.env.QWENPROXY_KEY || 'orion-proxy-key' },
 };
 
+/**
+ * Backend concurrency guard.
+ *
+ * Root cause (docs/QWEN_CODER_ROOT_CAUSE.md): qwenproxy drives a single
+ * browser-automation session per account. Concurrent requests to the same
+ * account are only serialized *inside* qwenproxy's own mutex — nothing
+ * upstream of it protects against overlapping calls arriving faster than
+ * that mutex can drain, which was empirically reproduced as HTTP 502s under
+ * 3 simultaneous requests (1 succeeded, 2 failed) even though every
+ * sequential request — including long ones — succeeded cleanly.
+ *
+ * This queue makes "concurrency 1 per backend" a guarantee enforced by the
+ * hub itself, so any client (however it calls the hub) gets safe behavior
+ * by default, instead of relying on every caller to self-serialize.
+ */
+class BackendQueue {
+  private active = 0;
+  private readonly limit: number;
+  private readonly waiters: Array<() => void> = [];
+
+  constructor(limit: number) {
+    this.limit = Math.max(1, limit);
+  }
+
+  async run<T>(fn: () => Promise<T>): Promise<T> {
+    if (this.active >= this.limit) {
+      await new Promise<void>((resolve) => this.waiters.push(resolve));
+    }
+    this.active++;
+    try {
+      return await fn();
+    } finally {
+      this.active--;
+      const next = this.waiters.shift();
+      if (next) next();
+    }
+  }
+}
+
+const BACKEND_CONCURRENCY: Record<string, number> = {
+  qwen: parseInt(process.env.QWEN_BACKEND_CONCURRENCY || '1'),
+};
+const backendQueues = new Map<string, BackendQueue>();
+function getBackendQueue(provider: string): BackendQueue {
+  let q = backendQueues.get(provider);
+  if (!q) {
+    q = new BackendQueue(BACKEND_CONCURRENCY[provider] ?? 1);
+    backendQueues.set(provider, q);
+  }
+  return q;
+}
+
 const EXPOSED_MODEL_IDS = new Set<string>([
   'qwen/3.7-plus',
   'qwen/3.7-plus-no-thinking',
@@ -490,12 +542,12 @@ app.post('/v1/chat/completions', async (c) => {
     delete (payload as any).session_id;
 
     try {
-      const upstream = await fetch(`${backend.url}/v1/chat/completions`, {
+      const upstream = await getBackendQueue(candidate.provider).run(() => fetch(`${backend.url}/v1/chat/completions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${backend.key}` },
         body: JSON.stringify(payload),
         signal: AbortSignal.timeout(timeoutForPayload(bytes, candidate.id)),
-      });
+      }));
 
       if (upstream.ok) {
         recordSuccess(candidate.id);

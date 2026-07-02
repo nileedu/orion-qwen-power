@@ -5,7 +5,7 @@ New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
 
 $qwen = Start-Process powershell.exe -WindowStyle Hidden -PassThru -ArgumentList @(
   "-NoProfile","-ExecutionPolicy","Bypass","-Command",
-  "cd '$Root\proxies\qwenproxy'; `$env:PORT='3802'; `$env:API_KEY='orion-proxy-key'; npm run start *> '$LogDir\qwenproxy.log'"
+  "cd '$Root\proxies\qwenproxy'; `$env:PORT='3802'; `$env:API_KEY='orion-proxy-key'; `$env:HOST='127.0.0.1'; npm run start *> '$LogDir\qwenproxy.log'"
 )
 
 Start-Sleep -Seconds 3

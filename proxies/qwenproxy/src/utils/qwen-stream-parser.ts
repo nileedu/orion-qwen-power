@@ -49,6 +49,8 @@ export interface StreamParserState {
   targetResponseId: string | null;
   currentThoughtIndex: number;
   lastFullContent: string;
+  contentLength: number;
+  contentSuffix: string;
   reasoningBuffer: string;
   promptTokens: number;
   completionTokens: number;
@@ -104,6 +106,8 @@ export class QwenStreamParser {
       targetResponseId: null,
       currentThoughtIndex: 0,
       lastFullContent: '',
+      contentLength: 0,
+      contentSuffix: '',
       reasoningBuffer: '',
       promptTokens: 0,
       completionTokens: 0,
@@ -167,9 +171,21 @@ export class QwenStreamParser {
       this._state.reasoningBuffer += delta.content;
       this.options.onThinking?.(delta.content);
     } else {
-      // Update incremental content tracking
-      const deltaResult = getIncrementalDelta(this._state.lastFullContent, delta.content);
+      // Update incremental content tracking. Threading contentLength/contentSuffix
+      // (matching the streaming call site in stream-handler.ts) keeps this on the
+      // O(1) fast path for long responses instead of falling back to the
+      // 2000-char-window common-prefix scan, which can silently duplicate
+      // content when a chunk doesn't literally start with the accumulated
+      // string (see docs/QWEN_CODER_ROOT_CAUSE.md, Achado #2).
+      const deltaResult = getIncrementalDelta(
+        this._state.lastFullContent,
+        delta.content,
+        this._state.contentLength,
+        this._state.contentSuffix
+      );
       this._state.lastFullContent = deltaResult.matchedContent;
+      this._state.contentLength = deltaResult.contentLength;
+      this._state.contentSuffix = deltaResult.contentSuffix;
 
       // Process through tool parser if enabled
       if (this.toolParser) {
@@ -184,9 +200,16 @@ export class QwenStreamParser {
             arguments: tc.arguments,
           });
         }
-        // Accumulate non-tool text
+        // Accumulate non-tool text. Replace the raw chunk (which may still
+        // contain the <tool_call> tag) with the parser's cleaned lead-in
+        // only. Previously this re-appended the raw `delta.content` right
+        // after `text`, which put the tool-call tag back into
+        // lastFullContent even when a tool call was extracted successfully
+        // (see docs/QWEN_CODER_ROOT_CAUSE.md, Achado #1).
         if (text) {
-          this._state.lastFullContent = this._state.lastFullContent.slice(0, this._state.lastFullContent.length - delta.content.length) + text + delta.content;
+          this._state.lastFullContent = this._state.lastFullContent.slice(0, this._state.lastFullContent.length - delta.content.length) + text;
+          this._state.contentLength = this._state.lastFullContent.length;
+          this._state.contentSuffix = this._state.lastFullContent.slice(-64);
         }
       } else {
         // Fast path: no tools, content already tracked in lastFullContent via getIncrementalDelta
@@ -221,6 +244,8 @@ export class QwenStreamParser {
       targetResponseId: null,
       currentThoughtIndex: 0,
       lastFullContent: '',
+      contentLength: 0,
+      contentSuffix: '',
       reasoningBuffer: '',
       promptTokens: this._state.promptTokens,
       completionTokens: this._state.completionTokens,

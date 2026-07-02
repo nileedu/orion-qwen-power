@@ -2,7 +2,11 @@ import { z } from 'zod'
 
 const envSchema = z.object({
   PORT: z.string().default('3000'),
-  HOST: z.string().default('0.0.0.0'),
+  // Loopback-only by default: this proxy holds a real Qwen browser session,
+  // and the multi-model runtime security policy requires all hubs/proxies
+  // to bind to 127.0.0.1 only. Override via HOST if a deployment genuinely
+  // needs to expose this beyond localhost (not recommended).
+  HOST: z.string().default('127.0.0.1'),
   HEADLESS: z.string().default('true'),
   BROWSER: z.enum(['chromium', 'firefox', 'webkit', 'chrome', 'edge']).default('chromium'),
   USER_DATA_DIR: z.string().default('./qwen_profiles'),

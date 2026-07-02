@@ -9,6 +9,11 @@ logs/
 data/
 qwen_profiles/
 *_state.json
+
+# Captured real API response data from diagnostic test runs (not synthetic
+# fixtures - contains actual generated content, not secrets, but not
+# meant to be committed either). See docs/QWEN_CODER_ROOT_CAUSE.md.
+tests/fixtures/qwen-coder-response-cases/
 *.sqlite
 *.sqlite3
 *.db
