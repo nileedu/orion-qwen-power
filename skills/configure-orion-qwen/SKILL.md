@@ -41,7 +41,9 @@ Default:   qwen/3.7-max
 5. Start:
    - Windows: `.\scripts\start.ps1`
    - Linux/macOS: `./scripts/start.sh`
-6. Validate:
+6. On Windows, run `.\scripts\configure-claude.ps1` to merge the Claude settings and discover every Qwen model exposed by the running hub.
+7. Configure automatic recovery on Windows with `.\scripts\install-autostart.ps1`.
+8. Validate:
    - Windows: `.\scripts\test.ps1`
    - Linux/macOS: `./scripts/test.sh`
 
@@ -63,10 +65,11 @@ Merge this block:
     "ANTHROPIC_API_KEY": "orion-proxy-key",
     "ANTHROPIC_MODEL": "qwen/3.7-max",
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"
-  },
-  "apiKeyHelper": "echo 'orion-proxy-key'"
+  }
 }
 ```
+
+Remove `apiKeyHelper` when `ANTHROPIC_API_KEY` is configured. Do not configure both authentication paths.
 
 If a `permissions` object already exists, preserve it. If missing, it is acceptable to add:
 
@@ -133,7 +136,7 @@ Open Continue config and add an OpenAI-compatible model:
 }
 ```
 
-Add optional models with the same base/key:
+Query `/v1/models` and add any desired models with the same base/key. Common choices include:
 
 ```text
 qwen/3.7-max-no-thinking

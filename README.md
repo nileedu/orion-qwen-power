@@ -95,6 +95,20 @@ Start:
 .\scripts\start.ps1
 ```
 
+Configure Claude Code without deleting the saved OAuth account:
+
+```powershell
+.\scripts\configure-claude.ps1 -ClearConflictingUserEnvironment
+```
+
+Run `start.ps1` first so the configurator can discover and add every currently available Qwen model to the Claude Code model picker. `qwen/3.7-max` remains the default.
+
+Install automatic startup and self-recovery at Windows logon:
+
+```powershell
+.\scripts\install-autostart.ps1
+```
+
 Status:
 
 ```powershell
@@ -181,10 +195,11 @@ Config:
   "permissions": {
     "allow": [],
     "deny": []
-  },
-  "apiKeyHelper": "echo 'orion-proxy-key'"
+  }
 }
 ```
+
+Do not set `apiKeyHelper` together with `ANTHROPIC_API_KEY`. Current Claude Code versions warn about the duplicate authentication path. Orion Qwen uses only `ANTHROPIC_API_KEY`.
 
 Important: do not delete your Claude Code OAuth login files. But in the shell, workspace, launcher, or settings file where you want to use Orion Qwen Power, do not leave `ANTHROPIC_AUTH_TOKEN` active. Use `ANTHROPIC_BASE_URL` plus `ANTHROPIC_API_KEY`. If `ANTHROPIC_AUTH_TOKEN` is present in that same environment, Claude Code can ignore the proxy/API-key path or route through the real OAuth flow instead.
 
@@ -243,6 +258,28 @@ Preserve existing OAuth login. Ask whether I want Claude Code, VS Code Continue,
 ```
 
 ## Troubleshooting
+
+On Windows, the normal recovery command is:
+
+```powershell
+cd "$HOME\Documents\orion-qwen-power"
+.\scripts\start.ps1
+.\scripts\test.ps1
+```
+
+For a full repair of Claude settings, autostart, services, and both API formats:
+
+```powershell
+.\scripts\repair.ps1
+```
+
+`start.ps1` is idempotent: it keeps healthy components running and starts only what is missing. For automatic recovery after reboot or a process crash, install the watchdog once:
+
+```powershell
+.\scripts\install-autostart.ps1
+```
+
+Detailed recovery steps are in [docs/RECOVERY.md](docs/RECOVERY.md).
 
 If `/v1/models` works but chat fails:
 
