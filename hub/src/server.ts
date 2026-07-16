@@ -37,7 +37,8 @@ app.use('*', cors({
   },
 }));
 
-const BACKENDS: Record<'qwen', { url: string; key: string }> = {
+const BACKENDS: Record<'qwen' | 'deepseek', { url: string; key: string }> = {
+  deepseek: { url: process.env.DEEPSPROXY_URL || 'http://localhost:3801', key: process.env.DEEPSPROXY_KEY || 'orion-proxy-key' },
   qwen: { url: process.env.QWENPROXY_URL || 'http://localhost:3802', key: process.env.QWENPROXY_KEY || 'orion-proxy-key' },
 };
 
@@ -81,6 +82,7 @@ class BackendQueue {
 }
 
 const BACKEND_CONCURRENCY: Record<string, number> = {
+  deepseek: parseInt(process.env.DEEPSEEK_BACKEND_CONCURRENCY || '1'),
   qwen: parseInt(process.env.QWEN_BACKEND_CONCURRENCY || '1'),
 };
 const backendQueues = new Map<string, BackendQueue>();
@@ -100,6 +102,10 @@ const EXPOSED_MODEL_IDS = new Set<string>([
   'qwen/3.7-max-no-thinking',
   'qwen/3.6-plus',
   'qwen/coder-plus',
+  'deepseek/v4-flash',
+  'deepseek/v4-flash-thinking',
+  'deepseek/v4-pro',
+  'deepseek/v4-pro-thinking',
 ]);
 
 const metricsState = {
@@ -225,11 +231,13 @@ async function getExposedModels(): Promise<CuratedModel[]> {
   const qwenModels = await getDynamicQwenModels();
   const qwenIds = new Set(qwenModels.map((m) => m.id));
   const curatedQwenMissing = CURATED_MODELS.filter((m) => m.provider === 'qwen' && EXPOSED_MODEL_IDS.has(m.id) && !qwenIds.has(m.id));
-  return [...qwenModels, ...curatedQwenMissing];
+  const nonQwen = CURATED_MODELS.filter((m) => m.provider !== 'qwen' && EXPOSED_MODEL_IDS.has(m.id));
+  return [...qwenModels, ...curatedQwenMissing, ...nonQwen];
 }
 
 function resolveModel(requestedModel: string): CuratedModel {
-  const normalized = requestedModel ? normalizeQwenPublicId(requestedModel) : DEFAULT_MODEL;
+  const requested = requestedModel || DEFAULT_MODEL;
+  const normalized = requested.startsWith('qwen') ? normalizeQwenPublicId(requested) : requested;
   const curated = getModelById(normalized);
   if (curated) return curated;
   return {
@@ -514,7 +522,7 @@ app.post('/v1/chat/completions', async (c) => {
 
   // Backends que são wrappers browser-stateless: cada chat é DM novo no site,
   // não respeitam multi-turn API. Pra esses, concatenamos history em prompt único.
-  const STATELESS_BACKENDS = new Set(['qwen']);
+  const STATELESS_BACKENDS = new Set(['deepseek', 'qwen']);
 
   let lastError: any = null;
   for (const candidate of chain) {

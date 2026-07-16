@@ -26,7 +26,7 @@ procedimento detalhado de configuracao e recuperacao
 
 ## Como interpretar 502 e o veredito
 
-O contrato usado pelos clientes e o hub na porta `3800`. A porta `3802` e um backend interno controlado por navegador. Um unico 502 em teste direto de `:3802` nao significa que Claude Code esta bloqueado se `scripts\test.ps1` passa pelo hub.
+O contrato usado pelos clientes e o hub na porta `3800`. As portas `3801` e `3802` sao backends internos controlados por navegador. Um unico 502 em teste direto de backend nao significa que Claude Code esta bloqueado se `scripts\test.ps1` passa pelo hub.
 
 ```text
 PASS
@@ -62,6 +62,12 @@ Confirme com uma chamada real:
 
 ```powershell
 .\scripts\test.ps1
+```
+
+Se estiver testando DeepSeek tambem, confirme pelo mesmo hub:
+
+```powershell
+.\scripts\test-deepseek.ps1
 ```
 
 Para refazer tambem a configuracao do Claude Code e a tarefa automatica:
@@ -107,6 +113,8 @@ Se as portas estao online, mas o chat retorna `No available account lanes`, `cap
 ```
 
 Conclua o login no Chrome e teste novamente. O watchdog nao tenta automatizar captcha ou credenciais.
+
+Para DeepSeek, `health` e `/v1/models` podem passar mesmo com sessao web expirada. O teste definitivo e `scripts\test-deepseek.ps1`. Se ele falhar por login/captcha/sessao, renove a sessao interativamente no `deepsproxy` configurado; nao extraia credenciais, nao tente burlar captcha e nao apague dados de sessao sem ordem explicita.
 
 ## Claude Code e OAuth
 

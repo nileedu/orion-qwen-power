@@ -1,5 +1,5 @@
 export type Tier = 'premium' | 'coding' | 'reasoning' | 'fast' | 'multimodal' | 'unknown';
-export type Provider = 'qwen';
+export type Provider = 'qwen' | 'deepseek';
 
 export interface CuratedModel {
   id: string;
@@ -14,6 +14,42 @@ export interface CuratedModel {
 export const DEFAULT_MODEL = 'qwen/3.7-max';
 
 export const CURATED_MODELS: CuratedModel[] = [
+  {
+    id: 'deepseek/v4-flash',
+    provider: 'deepseek',
+    backend_model: 'deepseek-v4-flash',
+    tier: 'fast',
+    speed: 'instant',
+    description: 'DeepSeek V4 Flash through the local deepsproxy browser session.',
+    best_for: ['quick-qa', 'summarize', 'classify', 'review'],
+  },
+  {
+    id: 'deepseek/v4-flash-thinking',
+    provider: 'deepseek',
+    backend_model: 'deepseek-v4-flash-thinking',
+    tier: 'reasoning',
+    speed: 'fast',
+    description: 'DeepSeek V4 Flash with thinking mode through the local deepsproxy browser session.',
+    best_for: ['reasoning', 'analysis', 'step-by-step', 'review'],
+  },
+  {
+    id: 'deepseek/v4-pro',
+    provider: 'deepseek',
+    backend_model: 'deepseek-v4-pro',
+    tier: 'coding',
+    speed: 'medium',
+    description: 'DeepSeek V4 Pro through the local deepsproxy browser session.',
+    best_for: ['code', 'refactor', 'debug', 'technical-review'],
+  },
+  {
+    id: 'deepseek/v4-pro-thinking',
+    provider: 'deepseek',
+    backend_model: 'deepseek-v4-pro-thinking',
+    tier: 'reasoning',
+    speed: 'slow',
+    description: 'DeepSeek V4 Pro with thinking mode through the local deepsproxy browser session.',
+    best_for: ['hard-reasoning', 'planning', 'algorithm-design', 'technical-review'],
+  },
   {
     id: 'qwen/3.7-max',
     provider: 'qwen',

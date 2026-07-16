@@ -1,6 +1,6 @@
 # Orion Qwen Power
 
-Orion Qwen Power is a local Qwen-first AI gateway for Windows and Linux.
+Orion Qwen Power is a local Qwen-first AI gateway for Windows and Linux, with optional DeepSeek browser-session models exposed through the same hub when `deepsproxy` is available.
 
 It exposes one local OpenAI-compatible endpoint and a practical Anthropic request adapter:
 
@@ -19,11 +19,12 @@ Author: nileedu
 ## What This Provides
 
 - Qwen web session bridge through `qwenproxy`.
+- Optional DeepSeek web session bridge through `deepsproxy`.
 - A local hub on port `3800`.
 - OpenAI-compatible `/v1/chat/completions`.
 - Anthropic request adapter at `/v1/messages` for Claude Code style clients.
 - `/v1/models` with dynamic Qwen model discovery.
-- Fallback between Qwen models when one fails.
+- Fallback between exposed models when one fails.
 - Metrics at `/metrics`.
 - Windows PowerShell and Linux/macOS shell scripts.
 - A bundled AI configuration skill in `skills/configure-orion-qwen`.
@@ -35,12 +36,12 @@ Claude Code / Continue / OpenCode / curl / SDK
                   |
                   v
        Orion Qwen Power Hub :3800
-                  |
-                  v
-          qwenproxy :3802
-                  |
-                  v
-            chat.qwen.ai
+          |                       |
+          v                       v
+   deepsproxy :3801        qwenproxy :3802
+          |                       |
+          v                       v
+   chat.deepseek.com        chat.qwen.ai
 ```
 
 The hub binds to `127.0.0.1` by default and accepts either `Authorization: Bearer orion-proxy-key` or `x-api-key: orion-proxy-key`.
@@ -62,9 +63,15 @@ qwen/3.6-35b-a3b
 qwen/3.5-plus
 qwen/3.5-omni-plus
 qwen/3.5-flash
+deepseek/v4-flash
+deepseek/v4-flash-thinking
+deepseek/v4-pro
+deepseek/v4-pro-thinking
 ```
 
-The hub maps these to backend names such as `qwen3.7-max` automatically.
+The hub maps these to backend names such as `qwen3.7-max` and `deepseek-v4-flash` automatically.
+
+`qwen/3.7-max` remains the default. DeepSeek models are selectable choices for review, reasoning, and comparison work.
 
 ## Requirements
 
@@ -119,6 +126,7 @@ Test:
 
 ```powershell
 .\scripts\test.ps1
+.\scripts\test-deepseek.ps1
 ```
 
 Stop:
@@ -230,6 +238,18 @@ Use OpenAI-compatible mode:
 
 Add more models with the same `apiBase` and `apiKey`.
 
+DeepSeek examples using the same local hub:
+
+```json
+{
+  "title": "Orion DeepSeek Flash",
+  "provider": "openai",
+  "model": "deepseek/v4-flash",
+  "apiBase": "http://localhost:3800/v1",
+  "apiKey": "orion-proxy-key"
+}
+```
+
 ## OpenAI SDK
 
 ```bash
@@ -297,6 +317,17 @@ If `/v1/models` works but chat fails:
 - Check `logs/qwenproxy.log`.
 - If Qwen asks for captcha or re-login, complete it in the browser opened by the login script.
 
+If DeepSeek `/health` and `/v1/models` work but DeepSeek chat fails:
+
+- Confirm `deepsproxy` is online on `http://localhost:3801/health` with `Authorization: Bearer orion-proxy-key`.
+- Run `scripts/test-deepseek.ps1`.
+- Check `logs/deepsproxy.log`.
+- Renew the DeepSeek browser session interactively from the configured `deepsproxy` source. Do not commit or publish auth/session files.
+
+## DeepSeek Backend Note
+
+This machine currently uses the existing `deepsproxy` from `C:\Users\Nilo\Documents\orion-proxy-stack\proxies\deepsproxy`. The `indicatorspro/FreeDeepseekAPI` project is worth harvesting later because it adds an Anthropic shim, Responses API, multi-account pool, model capabilities, and per-agent sessions. Its Claude Code docs mention `ANTHROPIC_AUTH_TOKEN`; do not copy that part into this setup. Orion uses `ANTHROPIC_API_KEY=orion-proxy-key` only.
+
 If Claude Code ignores the proxy:
 
 - Remove or unset `ANTHROPIC_AUTH_TOKEN` from the environment/profile being used for Orion Qwen.
@@ -306,6 +337,7 @@ If Claude Code ignores the proxy:
 If a port is busy:
 
 - Hub uses `3800`.
+- deepsproxy uses `3801`.
 - qwenproxy uses `3802`.
 - Stop old processes with `scripts/stop.*` or change ports in the `.env` files.
 

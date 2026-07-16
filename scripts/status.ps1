@@ -29,6 +29,14 @@ if ($task) {
 }
 
 try {
+  $deepseekHealth = Invoke-RestMethod -Uri "http://127.0.0.1:3801/health" `
+    -Headers @{ Authorization = "Bearer orion-proxy-key" } -TimeoutSec 5
+  Write-Host "OK      deepsproxy http://127.0.0.1:3801/health (status=$($deepseekHealth.status))"
+} catch {
+  Write-Host "INFO    deepsproxy http://127.0.0.1:3801/health unavailable"
+}
+
+try {
   $models = Invoke-RestMethod -Uri "http://127.0.0.1:3800/v1/models" `
     -Headers @{ Authorization = "Bearer orion-proxy-key" } -TimeoutSec 15
   Write-Host "OK      models $($models.data.Count) available"

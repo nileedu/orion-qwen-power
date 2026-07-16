@@ -16,7 +16,7 @@ $fallbackModels = @(
 try {
   $discovered = Invoke-RestMethod -Uri "http://127.0.0.1:3800/v1/models" `
     -Headers @{ Authorization = "Bearer orion-proxy-key" } -TimeoutSec 10
-  $otherModels = @($discovered.data.id | Where-Object { $_ -like "qwen/*" -and $_ -ne "qwen/3.7-max" } | Sort-Object -Unique)
+  $otherModels = @($discovered.data.id | Where-Object { $_ -ne "qwen/3.7-max" } | Sort-Object -Unique)
   $models = @("qwen/3.7-max") + $otherModels
 } catch {
   $models = $fallbackModels

@@ -20,10 +20,29 @@ function Test-Endpoint([string]$Url) {
   }
 }
 
+function Test-AuthenticatedEndpoint([string]$Url, [string]$Key) {
+  try {
+    Invoke-RestMethod -Uri $Url -Headers @{ Authorization = "Bearer $Key" } -TimeoutSec 5 | Out-Null
+    return $true
+  } catch {
+    return $false
+  }
+}
+
 function Wait-Endpoint([string]$Name, [string]$Url, [int]$TimeoutSeconds) {
   $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
   do {
     if (Test-Endpoint $Url) { return }
+    Start-Sleep -Seconds 1
+  } while ((Get-Date) -lt $deadline)
+
+  throw "$Name did not become reachable within $TimeoutSeconds seconds. Check $LogDir."
+}
+
+function Wait-AuthenticatedEndpoint([string]$Name, [string]$Url, [string]$Key, [int]$TimeoutSeconds) {
+  $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+  do {
+    if (Test-AuthenticatedEndpoint $Url $Key) { return }
     Start-Sleep -Seconds 1
   } while ((Get-Date) -lt $deadline)
 
@@ -73,6 +92,9 @@ if (-not (Test-Path "$Root\proxies\qwenproxy\node_modules")) {
   throw "Qwenproxy dependencies are missing. Run .\scripts\setup.ps1 first."
 }
 
+$DeepseekRoot = if ($env:DEEPSPROXY_ROOT) { $env:DEEPSPROXY_ROOT } else { "$HOME\Documents\orion-proxy-stack\proxies\deepsproxy" }
+$DeepseekAvailable = (Test-Path "$DeepseekRoot\package.json") -and (Test-Path "$DeepseekRoot\node_modules")
+
 $startMutex = New-Object System.Threading.Mutex($false, "Local\OrionQwenPowerStart")
 $hasStartLock = $false
 
@@ -83,7 +105,34 @@ try {
   }
 
   $qwenHealth = "http://127.0.0.1:3802/health"
+  $deepseekHealth = "http://127.0.0.1:3801/health"
   $hubHealth = "http://127.0.0.1:3800/health"
+
+  if ($DeepseekAvailable) {
+    if (Test-AuthenticatedEndpoint $deepseekHealth "orion-proxy-key") {
+      Write-Status "Deepsproxy already reachable on :3801"
+    } else {
+      Stop-UnhealthyListener 3801
+      Stop-StaleProcesses $DeepseekRoot
+      $log = Join-Path $LogDir "deepsproxy.log"
+      Rotate-Log $log
+      $deepseekRootEscaped = $DeepseekRoot.Replace("'", "''")
+      $logPath = $log.Replace("'", "''")
+      $command = "Set-Location -LiteralPath '$deepseekRootEscaped'; `$env:PORT='3801'; `$env:API_KEY='orion-proxy-key'; `$env:PLAYWRIGHT_HEADLESS='true'; & npm.cmd run start *>> '$logPath'"
+      $deepseek = Start-Process powershell.exe -WindowStyle Hidden -PassThru -ArgumentList @(
+        "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", $command
+      )
+      Write-Status "Starting deepsproxy PID $($deepseek.Id) on :3801"
+      try {
+        Wait-AuthenticatedEndpoint "deepsproxy" $deepseekHealth "orion-proxy-key" 180
+      } catch {
+        Stop-ProcessTree $deepseek.Id
+        throw
+      }
+    }
+  } else {
+    Write-Status "Deepsproxy not configured; skipping optional DeepSeek backend ($DeepseekRoot)"
+  }
 
   if (Test-Endpoint $qwenHealth) {
     Write-Status "Qwenproxy already reachable on :3802"
@@ -116,7 +165,7 @@ try {
     Rotate-Log $log
     $hubRoot = "$Root\hub".Replace("'", "''")
     $logPath = $log.Replace("'", "''")
-    $command = "Set-Location -LiteralPath '$hubRoot'; `$env:PORT='3800'; `$env:HOST='127.0.0.1'; `$env:HUB_API_KEY='orion-proxy-key'; `$env:QWENPROXY_URL='http://127.0.0.1:3802'; `$env:QWENPROXY_KEY='orion-proxy-key'; & npm.cmd run start *>> '$logPath'"
+    $command = "Set-Location -LiteralPath '$hubRoot'; `$env:PORT='3800'; `$env:HOST='127.0.0.1'; `$env:HUB_API_KEY='orion-proxy-key'; `$env:QWENPROXY_URL='http://127.0.0.1:3802'; `$env:QWENPROXY_KEY='orion-proxy-key'; `$env:DEEPSPROXY_URL='http://127.0.0.1:3801'; `$env:DEEPSPROXY_KEY='orion-proxy-key'; & npm.cmd run start *>> '$logPath'"
     $hub = Start-Process powershell.exe -WindowStyle Hidden -PassThru -ArgumentList @(
       "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", $command
     )

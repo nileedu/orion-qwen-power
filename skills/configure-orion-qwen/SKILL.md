@@ -1,6 +1,6 @@
 ---
 name: configure-orion-qwen
-description: Configure Orion Qwen Power on Windows, Linux, or macOS for Claude Code, VS Code Continue, OpenAI-compatible clients, or shell environments. Use when an agent must preserve existing Claude OAuth login, avoid ANTHROPIC_AUTH_TOKEN conflicts, set API-key based proxy variables, choose Qwen models, and validate the local hub with /v1/models plus chat tests.
+description: Configure Orion Qwen Power on Windows, Linux, or macOS for Claude Code, VS Code Continue, OpenAI-compatible clients, or shell environments. Use when an agent must preserve existing Claude OAuth login, avoid ANTHROPIC_AUTH_TOKEN conflicts, set API-key based proxy variables, choose Qwen or DeepSeek models, and validate the local hub with /v1/models plus chat tests.
 ---
 
 # Configure Orion Qwen Power
@@ -14,6 +14,7 @@ Use this skill to configure a machine for Orion Qwen Power without breaking exis
 - Use `ANTHROPIC_API_KEY=orion-proxy-key`.
 - Use `ANTHROPIC_BASE_URL=http://localhost:3800`.
 - Use default model `qwen/3.7-max`.
+- DeepSeek is optional and exposed through the same hub when `deepsproxy` is available on port `3801`; do not make it the default unless the user asks.
 - Ask the user where to configure it when unclear: Claude Code, VS Code Continue, OpenCode/OpenAI-compatible client, shell profile, or all.
 - Merge JSON config files. Do not overwrite unrelated settings.
 - Test after configuration.
@@ -21,11 +22,12 @@ Use this skill to configure a machine for Orion Qwen Power without breaking exis
 ## Local Endpoints
 
 ```text
-Hub:       http://localhost:3800
-OpenAI:    http://localhost:3800/v1
-Qwenproxy: http://localhost:3802
-Key:       orion-proxy-key
-Default:   qwen/3.7-max
+Hub:        http://localhost:3800
+OpenAI:     http://localhost:3800/v1
+Deepsproxy: http://localhost:3801
+Qwenproxy:  http://localhost:3802
+Key:        orion-proxy-key
+Default:    qwen/3.7-max
 ```
 
 ## Daily Recovery
@@ -40,15 +42,15 @@ When the user reports `ConnectionRefused`, unavailable API, missing models, or t
 
 1. Use PowerShell, not Bash.
 2. Do not ask where the repository is when the canonical path exists.
-3. Run `scripts\status.ps1` and inspect `logs\watchdog.log`, `logs\hub.log`, and `logs\qwenproxy.log`.
+3. Run `scripts\status.ps1` and inspect `logs\watchdog.log`, `logs\hub.log`, `logs\qwenproxy.log`, and `logs\deepsproxy.log` when DeepSeek is involved.
 4. Run `scripts\start.ps1`; it is idempotent and starts only unhealthy components.
 5. Run `scripts\test.ps1`; success requires real `CONECTADO` responses through both OpenAI and Anthropic request formats.
 6. If configuration or autostart is damaged, run `scripts\repair.ps1`.
 7. If the ports are online but chat reports `No available account lanes`, captcha, or an expired session, run `scripts\login-qwen.ps1` and ask the user to finish browser login.
 
-The Windows scheduled task `Orion Qwen Power Watchdog` should be running. It checks ports `3800` and `3802` every 20 seconds. Do not delete the saved Qwen browser profile or Claude OAuth account while repairing runtime availability.
+The Windows scheduled task `Orion Qwen Power Watchdog` should be running. It checks ports `3800` and `3802` every 20 seconds. Do not delete the saved Qwen or DeepSeek browser session data or Claude OAuth account while repairing runtime availability.
 
-Port `3800` is the supported contract for Claude Code and OpenAI-compatible clients. Port `3802` is internal. Do not return `BLOCKED` because of one direct qwenproxy 502 when the hub end-to-end test passes.
+Port `3800` is the supported contract for Claude Code and OpenAI-compatible clients. Ports `3801` and `3802` are internal backends. Do not return `BLOCKED` because of one direct backend 502 when the hub end-to-end test passes.
 
 Verdict criteria:
 
@@ -73,7 +75,7 @@ For suspected 502 or concurrency instability, run `scripts\test-stability.ps1`. 
 5. Start:
    - Windows: `.\scripts\start.ps1`
    - Linux/macOS: `./scripts/start.sh`
-6. On Windows, run `.\scripts\configure-claude.ps1` to merge the Claude settings and discover every Qwen model exposed by the running hub.
+6. On Windows, run `.\scripts\configure-claude.ps1` to merge the Claude settings and discover every Qwen/DeepSeek model exposed by the running hub.
 7. Configure automatic recovery on Windows with `.\scripts\install-autostart.ps1`.
 8. Validate:
    - Windows: `.\scripts\test.ps1`
@@ -176,6 +178,10 @@ qwen/3.7-plus
 qwen/3.7-plus-no-thinking
 qwen/3.6-plus
 qwen/coder-plus
+deepseek/v4-flash
+deepseek/v4-flash-thinking
+deepseek/v4-pro
+deepseek/v4-pro-thinking
 ```
 
 ## Tests
@@ -206,3 +212,14 @@ curl http://localhost:3800/v1/messages \
 ```
 
 Success means the model list returns Qwen models and chat returns a normal assistant message.
+
+DeepSeek hub test:
+
+```bash
+curl http://localhost:3800/v1/chat/completions \
+  -H "Authorization: Bearer orion-proxy-key" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"deepseek/v4-flash","messages":[{"role":"user","content":"responda exatamente: DEEPSEEK_CONECTADO"}]}'
+```
+
+On Windows, `scripts\test-deepseek.ps1` must return `DEEPSEEK TEST PASSED`. If `/health` and `/v1/models` pass but chat fails, renew the DeepSeek browser session from the `deepsproxy` source used by this machine. Do not extract credentials or bypass captcha.
