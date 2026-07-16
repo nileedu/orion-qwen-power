@@ -12,7 +12,14 @@ function Check([string]$Name, [string]$Url) {
 }
 
 Check "hub" "http://127.0.0.1:3800/health"
-Check "qwenproxy" "http://127.0.0.1:3802/health"
+
+try {
+  $qwenHealth = Invoke-RestMethod -Uri "http://127.0.0.1:3802/health" -TimeoutSec 5
+  Write-Host "OK      qwenproxy http://127.0.0.1:3802/health (internal=$($qwenHealth.status))"
+} catch {
+  Write-Host "FAILED  qwenproxy http://127.0.0.1:3802/health"
+  $failed = $true
+}
 
 $task = Get-ScheduledTask -TaskName "Orion Qwen Power Watchdog" -ErrorAction SilentlyContinue
 if ($task) {
@@ -23,7 +30,7 @@ if ($task) {
 
 try {
   $models = Invoke-RestMethod -Uri "http://127.0.0.1:3800/v1/models" `
-    -Headers @{ Authorization = "Bearer orion-proxy-key" } -TimeoutSec 10
+    -Headers @{ Authorization = "Bearer orion-proxy-key" } -TimeoutSec 15
   Write-Host "OK      models $($models.data.Count) available"
 } catch {
   Write-Host "FAILED  models $($_.Exception.Message)"

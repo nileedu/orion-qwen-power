@@ -24,6 +24,31 @@ procedimento detalhado de configuracao e recuperacao
 
 `API Error: Unable to connect to API (ConnectionRefused)` significa que o Claude Code tentou acessar `http://localhost:3800`, mas o hub local nao estava executando. A conta OAuth e a sessao Qwen nao foram apagadas.
 
+## Como interpretar 502 e o veredito
+
+O contrato usado pelos clientes e o hub na porta `3800`. A porta `3802` e um backend interno controlado por navegador. Um unico 502 em teste direto de `:3802` nao significa que Claude Code esta bloqueado se `scripts\test.ps1` passa pelo hub.
+
+```text
+PASS
+test.ps1 passa OpenAI + Anthropic e o smoke do claude.exe responde
+
+DEGRADED
+hub funciona, mas um diagnostico interno direto e transiente
+
+BLOCKED
+3 chamadas consecutivas pelo hub falham depois do reparo, ou login/captcha humano e necessario
+```
+
+Qualquer relatorio que diga "evidencia salva" deve informar o caminho absoluto de um arquivo que realmente existe.
+
+Para suspeita de 502 ou instabilidade concorrente, use o teste oficial:
+
+```powershell
+.\scripts\test-stability.ps1
+```
+
+Ele testa os dois formatos da porta `3800`, executa tres chamadas concorrentes e grava o resultado real em `logs\stability-latest.json`.
+
 ## Recuperacao em um comando
 
 ```powershell

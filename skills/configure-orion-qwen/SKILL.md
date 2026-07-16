@@ -48,6 +48,18 @@ When the user reports `ConnectionRefused`, unavailable API, missing models, or t
 
 The Windows scheduled task `Orion Qwen Power Watchdog` should be running. It checks ports `3800` and `3802` every 20 seconds. Do not delete the saved Qwen browser profile or Claude OAuth account while repairing runtime availability.
 
+Port `3800` is the supported contract for Claude Code and OpenAI-compatible clients. Port `3802` is internal. Do not return `BLOCKED` because of one direct qwenproxy 502 when the hub end-to-end test passes.
+
+Verdict criteria:
+
+- `PASS`: `scripts\test.ps1` passes both formats and a Claude Code smoke request succeeds.
+- `DEGRADED`: the hub contract passes but an internal direct diagnostic is transient.
+- `BLOCKED`: three consecutive hub chat attempts fail after recovery, or human login/captcha is required and cannot be completed automatically.
+
+When saving evidence, report its absolute path and verify that the file exists before claiming it was saved.
+
+For suspected 502 or concurrency instability, run `scripts\test-stability.ps1`. Use its printed verdict and absolute evidence path instead of inventing a custom direct-backend test.
+
 ## Setup Workflow
 
 1. Detect OS and home directory.

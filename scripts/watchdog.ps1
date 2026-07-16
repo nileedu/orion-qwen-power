@@ -32,15 +32,25 @@ try {
   if (-not $hasLock) { exit 0 }
 
   Write-WatchdogLog "watchdog started"
+  $consecutiveFailures = 0
   do {
     $qwenOk = Test-Endpoint "http://127.0.0.1:3802/health"
     $hubOk = Test-Endpoint "http://127.0.0.1:3800/health"
 
-    if (-not $qwenOk -or -not $hubOk) {
+    if ($qwenOk -and $hubOk) {
+      $consecutiveFailures = 0
+    } else {
+      $consecutiveFailures++
+    }
+
+    $bothDown = -not $qwenOk -and -not $hubOk
+    $shouldRecover = $Once -or $bothDown -or $consecutiveFailures -ge 2
+    if ($shouldRecover -and (-not $qwenOk -or -not $hubOk)) {
       Write-WatchdogLog "recovery requested (qwenproxy=$qwenOk hub=$hubOk)"
       try {
         & "$PSScriptRoot\start.ps1" -Quiet
         Write-WatchdogLog "recovery completed"
+        $consecutiveFailures = 0
       } catch {
         Write-WatchdogLog "recovery failed: $($_.Exception.Message)"
       }

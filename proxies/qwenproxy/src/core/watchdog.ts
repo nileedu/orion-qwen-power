@@ -1,6 +1,12 @@
 import { EventEmitter } from 'events'
+import v8 from 'node:v8'
 import { config } from './config.js'
 import { metrics } from './metrics.js'
+
+export function calculateHeapUsagePercent(heapUsed: number, heapSizeLimit: number): number {
+  if (heapSizeLimit <= 0) return 100
+  return (heapUsed / heapSizeLimit) * 100
+}
 
 interface HealthStatus {
   ram: 'ok' | 'warning' | 'critical'
@@ -51,7 +57,8 @@ export class Watchdog extends EventEmitter {
 
   private checkRAM(): 'ok' | 'warning' | 'critical' {
     const mem = process.memoryUsage()
-    const usagePercent = (mem.heapUsed / mem.heapTotal) * 100
+    const heapSizeLimit = v8.getHeapStatistics().heap_size_limit
+    const usagePercent = calculateHeapUsagePercent(mem.heapUsed, heapSizeLimit)
 
     if (usagePercent > config.watchdog.ram.criticalThreshold) return 'critical'
     if (usagePercent > config.watchdog.ram.warningThreshold) return 'warning'

@@ -9,6 +9,11 @@ $Watchdog = Join-Path $PSScriptRoot "watchdog.ps1"
 $TaskName = "Orion Qwen Power Watchdog"
 $UserId = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
 
+if (Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue) {
+  Stop-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
+  Start-Sleep -Seconds 1
+}
+
 $action = New-ScheduledTaskAction -Execute "powershell.exe" `
   -Argument "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$Watchdog`" -IntervalSeconds $IntervalSeconds" `
   -WorkingDirectory $Root
