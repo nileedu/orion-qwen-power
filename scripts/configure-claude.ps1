@@ -76,6 +76,14 @@ if ($ClearConflictingUserEnvironment) {
   Write-Host "Removed conflicting user-level Anthropic environment variables."
 }
 
+$skillSource = Join-Path (Split-Path -Parent $PSScriptRoot) "skills\configure-orion-qwen\SKILL.md"
+$skillDestination = "$HOME\.claude\skills\configure-orion-qwen"
+if (Test-Path $skillSource) {
+  New-Item -ItemType Directory -Path $skillDestination -Force | Out-Null
+  Copy-Item $skillSource (Join-Path $skillDestination "SKILL.md") -Force
+  Write-Host "Installed Claude Code skill: configure-orion-qwen"
+}
+
 Remove-Item Env:ANTHROPIC_AUTH_TOKEN -ErrorAction SilentlyContinue
 Write-Host "Claude Code now uses Orion Qwen through settings.json. OAuth account data was preserved."
 Write-Host "Configured $($models.Count) model(s); default is qwen/3.7-max."

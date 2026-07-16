@@ -168,6 +168,15 @@ Stop:
 
 ## Claude Code
 
+### Where Claude Code reads Orion instructions
+
+- `~/.claude/settings.json` configures the endpoint, API key, default model, and model picker.
+- `~/.claude/CLAUDE.md` contains global instructions loaded in every project.
+- `CLAUDE.md` in a repository contains project-specific instructions.
+- `~/.claude/skills/configure-orion-qwen/SKILL.md` contains the detailed setup and recovery procedure.
+
+`AGENTS.md` is primarily used by Codex and should not be the only place where Claude Code instructions are stored. On Windows, `scripts/configure-claude.ps1` installs or refreshes the global Orion skill automatically.
+
 Recommended config file:
 
 Windows:

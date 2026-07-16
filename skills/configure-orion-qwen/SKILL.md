@@ -28,6 +28,26 @@ Key:       orion-proxy-key
 Default:   qwen/3.7-max
 ```
 
+## Daily Recovery
+
+On this Windows machine, the canonical repository path is:
+
+```text
+C:\Users\Nilo\Documents\orion-qwen-power
+```
+
+When the user reports `ConnectionRefused`, unavailable API, missing models, or that Qwen stopped working:
+
+1. Use PowerShell, not Bash.
+2. Do not ask where the repository is when the canonical path exists.
+3. Run `scripts\status.ps1` and inspect `logs\watchdog.log`, `logs\hub.log`, and `logs\qwenproxy.log`.
+4. Run `scripts\start.ps1`; it is idempotent and starts only unhealthy components.
+5. Run `scripts\test.ps1`; success requires real `CONECTADO` responses through both OpenAI and Anthropic request formats.
+6. If configuration or autostart is damaged, run `scripts\repair.ps1`.
+7. If the ports are online but chat reports `No available account lanes`, captcha, or an expired session, run `scripts\login-qwen.ps1` and ask the user to finish browser login.
+
+The Windows scheduled task `Orion Qwen Power Watchdog` should be running. It checks ports `3800` and `3802` every 20 seconds. Do not delete the saved Qwen browser profile or Claude OAuth account while repairing runtime availability.
+
 ## Setup Workflow
 
 1. Detect OS and home directory.

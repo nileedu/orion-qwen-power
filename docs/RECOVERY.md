@@ -1,5 +1,25 @@
 # Recuperacao e disponibilidade
 
+## Onde o Claude procura as instrucoes
+
+O Claude Code separa configuracao de conexao e instrucoes de trabalho:
+
+```text
+%USERPROFILE%\.claude\settings.json
+endpoint, API key, modelo padrao e lista de modelos
+
+%USERPROFILE%\.claude\CLAUDE.md
+instrucoes globais carregadas em qualquer projeto
+
+<projeto>\CLAUDE.md
+instrucoes especificas do repositorio atual
+
+%USERPROFILE%\.claude\skills\configure-orion-qwen\SKILL.md
+procedimento detalhado de configuracao e recuperacao
+```
+
+`AGENTS.md` e usado principalmente pelo Codex. Para garantir que o Claude Code saiba recuperar o Qwen, mantenha as regras no `CLAUDE.md` e a skill no diretorio global do Claude. `scripts\configure-claude.ps1` reinstala a skill automaticamente.
+
 ## O que aconteceu no VS Code
 
 `API Error: Unable to connect to API (ConnectionRefused)` significa que o Claude Code tentou acessar `http://localhost:3800`, mas o hub local nao estava executando. A conta OAuth e a sessao Qwen nao foram apagadas.
